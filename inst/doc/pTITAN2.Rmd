@@ -1,0 +1,658 @@
+---
+title: "pTITAN2"
+subtitle: "Permutation of Treatment Labels and Threshold Indicator Taxa ANalysis"
+author: "Stephanie Figary^1^, Peter E. DeWitt^2,3,4^, and Naomi Detenbeck^5^"
+output:
+  bookdown::html_document2: default
+  bookdown::word_document2:
+    reference_docx: "template.docx"
+bibliography: references.bib
+vignette: >
+ %\VignetteEngine{knitr::rmarkdown}
+ %\VignetteIndexEntry{pTITAN2}
+ %\VignetteEncoding{UTF-8}
+---
+
+^1^(formerly) ORISE participant at U.S. Environmental Protection Agency, Atlantic Coastal Environmental Sciences Division, 27 Tarzwell Drive, Narragansett, RI, 02882, USA
+
+^2^Section of Informatics and Data Science, Department of Pediatrics, University of Colorado School of Medicine, Aurora Colorado, USA
+
+^3^National Renewable Energy Laboratory, Golden Colorado, USA
+
+^4^(formerly) Neptune and Company, Inc. Lakewood Colorado, USA
+
+^5^U.S. Environmental Protection Agency, Atlantic Coastal Environmental Sciences Division, 27 Tarzwell Drive, Narragansett, RI 02882, USA
+
+
+```{r label=setup, include = FALSE}
+library(knitr)
+loadNamespace("data.table")
+knitr::opts_chunk$set(collapse = TRUE)
+```
+
+**Abstract**
+
+Taxa Indicator Threshold ANalysis (TITAN) was developed to identify
+thresholds along environmental gradients where rapid changes in taxa
+frequency and relative abundance are observed. TITAN determines separate
+change-points for increasing and decreasing taxa in aggregate, as well as
+change-points for individual taxa, with associated confidence intervals
+generated using bootstrapping. However, if TITAN is applied to different
+classes of observations, additional analyses besides using
+non-overlapping confidence intervals are needed to establish whether
+change-points differ between treatments or groups because non-overlapping
+confidence intervals can indicate significant differences but
+overlapping confidence intervals do not necessarily mean the null
+hypothesis cannot be rejected. To address this, we present a new R
+package, pTITAN2, which is an extension to the existing TITAN2 package.
+The pTITAN2 package was developed to enable comparisons of TITAN output
+between treatments by permuting the observed data between treatments
+and rerunning TITAN on the permuted data. The output from pTITAN2 can be
+used to perform the appropriate statistical tests and determine
+statistical differences without using overlapping confidence intervals.
+
+**Keywords:** TITAN, permutations, thresholds, community composition
+
+# Introduction
+
+Community ecologists are interested in understanding the structure and
+interactions of multiple species in a given area or habitat type and
+many are interested in understanding how communities change in response
+to changing environmental or anthropogenic gradients. One method a
+community ecologist can use for understanding to detect changes or
+ecological thresholds across environmental gradients is Taxa Indicator
+Threshold ANalysis (TITAN) [@baker2010new]. TITAN is useful for
+determining the impacts of environmental or anthropogenic gradients such
+as upstream impervious cover (IC) in a watershed in community ecology
+studies because it both analyzes each individual taxa response and the
+community as a whole in the same analysis. Additionally, unlike other
+community ecology methods, TITAN separates the taxa that increase across
+an environmental gradient from those that decrease to provide a more
+complete picture of the community response to that gradient.
+
+As an overview, TITAN methods use change point
+[@king2003integrating;@qian2003two] and indicator species analysis
+[@dufrene1997species]
+to determine the point along an environmental gradient,
+such as percent IC in the upstream watershed area, where individual taxa have
+the largest change in occurrence frequency and abundance, and then uses
+the individual taxa results to determine synchronous areas of taxa
+change at the community level [@baker2010new;@baker2013titan].  Individual
+taxa change points are determined by calculating the taxa's indicator
+(IndVal) score along the environmental gradient and assigning the taxa
+as either increasing (z+) or declining (z-) in response to an increase
+in the environmental gradient variable. Permutations of data in TITAN
+runs are used to calculate the likelihood of random data generating a
+larger IndVal score than the observed data and to standardize the taxa
+response to the environmental gradient by calculating the taxa z-scores
+using permuted distributions. Taxa z-scores are added together for
+increasing (z+) and declining (z-) taxa along the environmental gradient
+and the point with the highest sum(z-) and sum(z+) score is defined as
+the community change point. Next, bootstrapping of observed data is used
+to calculate percentiles around the community and individual taxa
+z-scores, and to determine if individual taxon responses are pure and
+reliable. Purity is a measure of the proportion of bootstrap results
+that match the taxa's observed response group as either increasing or
+declining. Reliability is the proportion of bootstraps with a low
+probability (p &lt; 0.01) of random data having a higher IndVal
+score than the bootstrapped observed data. Community change points are
+also calculated after selecting (filtering) only the taxa that exceeded
+purity and reliability requirements for the increasing (fsum(z+)) and
+declining (fsum(z-)) change points. Narrow peaks around the maximum
+sum(z) or fsum(z) (filtered) scores indicate areas with synchronous
+change in individual taxa frequency and abundance and may indicate an
+ecological threshold along the environmental gradient being evaluated.
+More information on TITAN methods can be found in @baker2013titan
+or in the TITAN R package, TITAN2, [@R-TITAN2].
+
+While TITAN is a powerful tool for community ecologist it requires
+additional analysis for comparing results from different regions, groups
+or treatments. Previously, researchers have used non-overlapping
+confidence intervals for change-points from TITAN output to indicate
+significant differences between groups [@king2011novel]. 2011). However,
+although non-overlapping confidence intervals can indicate significant
+differences, overlapping confidence intervals do not necessarily mean
+the null hypothesis cannot be rejected
+[@greenland2016statistical;@schenker2001judging].
+
+We developed a new R package, pTITAN2, as an extension of the existing
+TITAN2 R package [@R-TITAN2]. The goal of pTITAN2 is to enable
+comparisons of TITAN output between treatments by permuting the
+observed data between treatments and rerunning TITAN on the permuted
+data. There are some limitations on the permutations, including (1) a
+sampling site cannot occur in a category more than once, the same
+limitation as in the original TITAN runs and (2) the original sample
+size distribution is maintained. This addresses potential sample size
+effects and enables comparisons between treatments with different sample
+sizes more accurately than using non-overlapping confidence intervals. A
+vignette is provided based on a dataset of macroinvertebrate data from
+California streams that fall along a gradient of watershed percent
+impervious cover. We compare change-points among different climate
+conditions (wet, average, and dry) based on the Palmer Drought Severity
+Index, which serve as the treatments in this example.
+
+# Methods
+
+## Operation:
+
+Like TITAN2, pTITAN2 was developed using the R programming language
+[@R-base].  pTITAN2 has been testing on Windows, Mac OS, and Ubuntu for the
+latest R version (`r paste(R.version$major, R.version$minor, sep = ".")`
+at time of writing) along with old release and
+development versions via github actions.  Users should be familiar with the
+TITAN2 package operations before using pTITAN2 (see @R-TITAN2).
+
+The basic workflow for pTITAN2 is
+
+1. Prepare and import the environmental gradient dataset into R
+2. Prepare and import the taxonomic dataset into R
+3. Pre-process raw taxonomic data to determine appropriate taxonomic level of resolution (occurrence function)
+4. Select columns for the taxon level returned by occurrence function
+5. Permute the data across treatment labels to generate list of lists
+6. Set up cluster for parallel processing (optional)
+7. Run TITAN2 series on original and permuted data sets
+8. Analyze probability of exceeding observed difference in change-point between treatments based on distribution of paired change-point differences
+
+```{r label = "workflow", eval = FALSE, fig.cap = "The series of steps needed to impliment pTITAN2", echo = FALSE, results = "asis"}
+DiagrammeR::grViz(diagram = "digraph flowchart {
+                   node [fontname = arial, shape = oval]
+                   tab1 [label = '@@1']
+                   tab2 [label = '@@2']
+                   tab3 [label = '@@3']
+                   tab4 [label = '@@4']
+                   tab5 [label = '@@5']
+                   tab6 [label = '@@6']
+                   tab7 [label = '@@7']
+                   tab8 [label = '@@8']
+
+                   tab1 -> tab2 -> tab3 -> tab4 -> tab5 -> tab6 -> tab7 -> tab8;
+}
+  [1]: 'Prepare and import the environmental gradient dataset into R'
+  [2]: 'Prepare and import the taxonomic dataset into R'
+  [3]: 'Preprocess raw taxonomic data to determine appropriate taxonomic level\\nof resolution (occurrence function)'
+  [4]: 'Select columns for the taxon level retuned by occurrence function'
+  [5]: 'Permut the data across treatment labels to generate list of lists'
+  [6]: 'Set up cluster for parallele processing (optional)'
+  [7]: 'Run TITAN2 series on original and permuted data sets'
+  [8]: 'Analyze probability of exceeding observed diffrence in change-point\\nbetween treatments based on distribution of paired change-point differences'
+  ")
+```
+
+## Implementation:
+
+The first step of pTITAN2 is to provide the data about the environmental
+gradient in exactly the format as for TITAN, step
+1).  This can be either a single file or include in the taxonomic data file
+[@R-TITAN2].  Like TITAN2, taxonomic information should be provided as counts or
+density.  Unlike TITAN2, pTITAN2 taxonomic data needs to be provide as a code
+that is 8 characters in length and captures four levels of hierarchical
+taxonomic classification information.
+
+The pTITAN2 package provides four example data sets, two taxonomic and two
+environmental gradient (Table \@ref(tab:datasets)).  These data sets are
+provided as raw csv files and as prepared R datasets.
+
+```{r label = "datasets", echo = FALSE, results = "asis"}
+d <-
+  data.table::fread(text = "
+C_IC_D_06_wID|C_IC_D_06_wID.csv|Environmental Gradient|Chaparral|Dry
+C_IC_N_06_wID|C_IC_N_06_wID.csv|Environmental Gradient|Chaparral|Normal
+CD_06_Mall_wID|CD_06_Mall_wID.csv|Taxonomic|Chaparral|Dry
+CN_06_Mall_wID|CN_06_Mall_wID.csv|Taxonomic|Chaparral|Normal
+",
+header = FALSE,
+col.names = c("R Data", "csv File", "Data Type", "Region", "Treatment")
+  )
+
+knitr::kable(d, caption = "Example data sets provided in pTITAN2.")
+```
+
+You can gain access to the csv files via `system.file`
+```{r label="list-example-data-sets"}
+list.files(system.file("extdata", package = "pTITAN2"))
+```
+or get the data sets loaded into your environment via
+```{r}
+data(C_IC_D_06_wID, C_IC_N_06_wID, CD_06_Mall_wID, CN_06_Mall_wID,
+     package = "pTITAN2")
+
+str(C_IC_D_06_wID)  # Environemntal Gradient, Dry Treatment
+str(C_IC_N_06_wID)  # Environemntal Gradient, Normal Treatment
+dim(CD_06_Mall_wID) # Taxonomic, Dry Treatment
+dim(CN_06_Mall_wID) # Taxonomic, Normal Treatment
+```
+
+The `CN_06_Mall.csv` (Chaparral Region, Treatment = Normal) file contains raw
+macroinvertebrate density data for 500 possible macroinvertebrate codes for
+each taxonomic level (class, order, family, genus). The `occurrences`
+function selects the codes that should be used for the `TITAN2::titan` run.
+The goal is to select the macroinvertebrate code with the most taxonomic
+detail having at least `n` occurrences. Only one macroinvertebrate code will be
+associated with the macroinvertebrate counts. For example, if there are at
+least `r as.list(args(pTITAN2::occurrences))$n` occurrences at the genus level, the family, order, and class codes
+would not be used in the `TITAN2::titan` run.
+
+The names within the data set are expected to have the following structure:
+
+* 8 characters in length
+* characters 1 and 2 denote the class
+* characters 3 and 4 denote the order
+* characters 5 and 6 denote the family
+* characters 7 and 8 denote the genus.
+
+If no information at a level exists, use "00" to hold the place. For
+example: A code that is 'Bi000000' is the Bivalvia class, while BiVe0000 is
+the Bivalvia class, Veneroida order. BiVeSh00 is the Bivalvia class,
+Veneroida order, Spheriridae family. BiVeSh01 is a genus within that family.
+
+The first new function provided by pTITAN2 is `occurrences.`  Taking the
+taxonomic data as an input, the return of `occurrences` is a data.frame with the
+taxon, the class, order, family, and genus split out into individual columns,
+and the count of occurrences within the provided taxonomic data set.
+`TITAN2::titan` recommends all taxonomic groups have at least five observations
+[@baker2010new]. Thus `occurances` returns only taxons with at least `n`
+observations, defaulting to `r as.list(args(pTITAN2::occurrences))$n`.  The taxonomic code chosen for analysis should
+be at the finest possible resolution.  For example, if a macroinvertebrate
+count has at least `r as.list(args(pTITAN2::occurrences))$n` occurrences in a genus code, the family, order, and class
+codes associated with these counts should be removed. Further, if there are too
+few counts at the genus level, but at least `r as.list(args(pTITAN2::occurrences))$n` counts at the family level- the
+family code would be retained and the order and class codes would be removed.
+
+The second new function provided by pTITAN2 is the `permute` function which
+provides a list of permuted sets of taxa and environmental gradients.  This
+function is used with categorical environmental variables (treatments), such as
+Wet/Dry or Urban/Rural.  The function permutes the treatment labels across the
+data such that each station has a non-zero probability of being assigned to each
+treatment, and the stations are unique within each treatment and replication.
+There are some limitation on the permutations generated by `permute`. First, a site
+cannot occur in a category more than once within a permutation. Second, the
+original sample size distribution is maintained.  These limitations address
+potential sample size effects in TITAN, where treatments with low sample sizes
+have wide confidence intervals and variable change points compared to treatments
+with high sample sizes, and enable comparisons between treatments with different
+sample sizes.
+
+For example, assume we have sites A, B, C, D, and E with treatments 1 and 2
+(Table \@ref(tab:exampleTreatmentPermutation)).
+Let Trt0 denote the initial treatment labels for the sites and Trt1, ...,
+Trt4 denote permuted treatment labels.  For sites A and C, each permuted set of
+treatment labels consist of one row for label 1 and one row for label 2.  For
+sites B, D, and E, the initial observations were for treatments 1, 2, and 2
+respectively.  The balance of these labels is maintained across the
+permutations.
+
+```{r, include = FALSE}
+set.seed(42) # set the random number generator for reproduciblity
+eg_permutation <-
+  data.table::data.table(site = c("A", "A", "B", "C", "C", "D", "E"),
+                         trt0  = c(1, 2, 1, 1, 2, 2, 2))
+eg_permutation[, site_n := .N, keyby = .(site)]
+eg_permutation[site_n >  1, trt1 := sample(trt0), by = .(site)]
+eg_permutation[site_n == 1, trt1 := sample(trt0)]
+
+eg_permutation[site_n >  1, trt2 := sample(trt0), by = .(site)]
+eg_permutation[site_n == 1, trt2 := sample(trt0)]
+
+eg_permutation[site_n >  1, trt3 := sample(trt0), by = .(site)]
+eg_permutation[site_n == 1, trt3 := sample(trt0)]
+
+eg_permutation[site_n >  1, trt4 := sample(trt0), by = .(site)]
+eg_permutation[site_n == 1, trt4 := sample(trt0)]
+
+eg_permutation[, site_n := NULL]
+```
+
+```{r label = "exampleTreatmentPermutation", echo = FALSE, results = "asis"}
+knitr::kable(eg_permutation,
+             caption = "Example distribution of sites and perutated treatment labels.",
+             align = "c")
+```
+
+After permutations, clusters can be used for parallel processing of
+`TITAN::titan()` calls.  This can be advantageous
+as `TITAN::titan()` calls can be time and computationally expensive.  Following
+the needed `TITAN::titan()` calls the differences between treatment change
+points in the observed data can be compared to the differences between treatment
+change points in the permuted stat to determine if the observed treatment
+differences are statistically significant.
+
+
+# Example
+
+Here we present an example showing implementation of pTITAN2.  We will describe
+the provided example data sets and how to use the `occurrences()` and
+`permute()` functions.
+
+To reproduce the examples in this vignette you will need to load and attach
+the pTITAN2 and magrittr namespaces.  Other namespaces are used explicitly,
+loaded (not attached) here.
+
+```{r }
+library(pTITAN2)
+library(magrittr)
+loadNamespace("data.table")
+loadNamespace("dplyr")
+loadNamespace("tidyr")
+```
+
+## Example data
+
+Example data provided within the pTITAN2 package were based on publicly
+available stream macroinvertebrate data from California.  The data include
+existing macroinvertebrate abundances from the California Environmental Data
+Exchange Network (CEDEN, last accessed 30 June 2017), and the Southern
+California Coastal Water Research Project (SCCWRP) [@fetscher2014linking].
+Samples in the CEDEN dataset were collected between 2000 and 2016, and samples
+from the SCCWRP dataset were collected between 1997 and 2011.  Both data sets
+were generated using probabilistic sampling designs and are expected to be
+representative of streams in the region.
+
+For this example, data were extracted for California's Chapparal Region
+[@ode2011ecological].  Sample observations were divided into one of three
+classes based on the precipitation regime for the sampling year using the Palmer
+Drought Severity Index (PDSI,
+https://www7.ncdc.noaa.gov/CDO/CDODivisionalSelect.jsp). The Palmer Drought
+Severity Index  was determined for each sampling event using monthly PDSI
+data from the National Oceanic and Atmospheric Administration (NOAA, last
+accessed 21 December 2016) and climate divisions from the National Climatic Data
+Center (USGS 2004, last accessed 21 December 2016). All sampling events were
+classified as dry (less than -2 PDSI), normal (between -2 and 2 PDSI), or wet ( greater than 2 PDSI)
+and these classifications were used as treatments for the permutations. The
+environmental gradient of interest was percent impervious cover in the upstream
+watershed, in this case defined by the National Land Cover Datasets (NLCD,
+@homer2007completion, homer2015completion), with values interpolated between
+NLCD years of record (2001,
+2006, 2011). Impervious area additions beyond 2011 were estimated as 50% of
+disturbed area for construction sites as documented in the California Storm Water
+Multiple Application and Report Tracking System (SMARTS dataset, CalEPA)
+(smarts.waterboards.ca.gov, last accessed 31 July 2017).
+
+For running pTITAN2, the example data sets have a separate csv or pre-built R
+data sets (\@ref(tab:datasets)), for the environmental variable, in this case
+percent impervious cover, and macroinvertebrate density data. The data structure
+that is shown here is not required for pTITAN2 and instead the environmental
+variables and treatments could be in a single data file and subdivided as
+desired. Separate data files are provided for each 'treatment' that is explored
+including data from either drought (dry) or normal precipitation years in the
+Chaparral region of California.
+
+## Function occurrences
+
+The taxonomic sets, CD_06_Mall_wID and CN_06_Mall_wID, contains raw
+macroinvertebrate density data for 500 possible macroinvertebrate codes for
+each taxonomic level (class, order, family, genus).
+```{r}
+dim(CD_06_Mall_wID)
+
+# top 4 rows and first 10 columns
+CD_06_Mall_wID[1:4, 1:10]
+```
+
+The `occurrences`
+function selects the codes that should be used for the `TITAN2::titan` run.
+The goal is to select the macroinvertebrate code with the most taxonomic
+detail having at least `n` occurrences. Only one macroinvertebrate code will be
+associated with the macroinvertebrate counts. For example, if there are at
+least `r as.list(args(pTITAN2::occurrences))$n` occurrences at the genus level, the family, order, and class codes
+would not be used in the `TITAN2::titan` run.
+
+The data is parsed within the `occurrences` call and returns a data.frame with
+each taxon code split into its components and the frequency of the taxon within
+the data set.
+A new function in pTITAN2 is the occurrences function. This is an extension for
+deciding the taxonomic detail to be included in a TITAN run based on `minSplt`
+in TITAN.  `minSplt` is minimum number of occurrences that TITAN is looking for
+taxa to have across the provided sites. The `minSplt` default in TITAN is 5 and
+should never drop below 3.  The default for `occurrences` is `minSplt` = `n` =
+`r as.list(args(pTITAN2::occurrences))$n`.
+
+```{r label = "occurrences_example"}
+head(occurrences(CN_06_Mall_wID[, -1]))
+```
+
+Compare these results to working with the raw data.  For example purposes we present the summary of the raw data twice,
+once using tidyverse syntax and once using data.table syntax.
+```{r}
+# Tidyverse
+CN_06_Mall_wID %>%
+  dplyr::select(-StationID) %>%
+  tidyr::pivot_longer(cols = dplyr::everything(), names_to = 'taxon', values_to = 'count') %>%
+  dplyr::mutate(
+                Class  = substr(.data$taxon, 1L, 2L),
+                Order  = substr(.data$taxon, 3L, 4L),
+                Family = substr(.data$taxon, 5L, 6L),
+                Genus  = substr(.data$taxon, 7L, 8L)
+                ) %>%
+  dplyr::group_by(.data$Class, .data$Order, .data$Family, .data$Genus) %>%
+  dplyr::summarise(
+                   taxon = unique(.data$taxon),
+                   count = sum(.data$count > 0),
+                   .groups = "keep"
+                   ) %>%
+  dplyr::ungroup() %>%
+  dplyr::arrange(.data$Class, .data$Order, .data$Family, .data$Genus)
+```
+
+```{r}
+# data.table
+taxon_count <- data.table::copy(CN_06_Mall_wID)
+data.table::setDT(taxon_count)
+data.table::set(taxon_count, j = "StationID", value = NULL)
+for(j in as.integer(which(sapply(taxon_count, is.integer)))) {
+  data.table::set(taxon_count, j = j, value = as.numeric(taxon_count[[j]]))
+}
+
+taxon_count <- data.table::melt(taxon_count, variable.factor = FALSE, measure.vars = names(taxon_count), variable.name = "taxon")
+taxon_count[, value := sum(value > 0), keyby = .(taxon)]
+taxon_count <- unique(taxon_count)
+
+data.table::set(taxon_count, j = "Class",  value = substr(taxon_count[["taxon"]], 1L, 2L))
+data.table::set(taxon_count, j = "Order",  value = substr(taxon_count[["taxon"]], 3L, 4L))
+data.table::set(taxon_count, j = "Family", value = substr(taxon_count[["taxon"]], 5L, 6L))
+data.table::set(taxon_count, j = "Genus",  value = substr(taxon_count[["taxon"]], 7L, 8L))
+
+data.table::setkeyv(taxon_count, c("taxon", "Class", "Order", "Family", "Genus"))
+
+taxon_count[grepl("^(Ar|Bi).+", taxon)]
+```
+
+Note that for the Ar class there is only one row with no order, family, or genus
+level information.  Compare to the Bi class where the Un order has no presence
+counts and is thus not reported in object returned from `occurrences`.  BiVeCa01
+has counts and will be reported but BiVeCa00 should not be reported.  BiVe0000
+and Bi000000 should not be reported as `occurrences` as preference for the codes
+with family and genus level information.
+
+## Function permute
+
+The function permute is used to generate a list of permuted sets of taxa and
+environmental gradients. Function parameters include a list of data frames
+containing taxa for each treatment group, a list of data frames containing the
+associated environmental gradient variables, and the site ids. Before we can run
+permute, we need to import the environmental gradients data.
+
+```{r }
+eg <-
+  permute(taxa = list(CD_06_Mall_wID, CN_06_Mall_wID),
+          envs = list(C_IC_D_06_wID, C_IC_N_06_wID),
+          sid  = "StationID")
+str(eg, max.level = 2)
+```
+
+The return of `permute` is list of lists. The first level denotes the treatment,
+in this example Treatment1 is "dry" and Treatment2 is "normal" -- the order of
+the input data sets.  The second level contains the data.frames with
+environmental and taxonomic data.
+
+
+## Running `TITAN2::titan`
+
+The most computationally expensive part of this work is calling
+`TITAN2::titan` many, many times. A good option is to use the parallel
+package to send the task of permuting the data and running `TITAN2::titan()`
+to individual processing cores.  That is system dependent and left to the end
+user to implement.  For an example of generating the permutations with `TITAN2::titan()`
+see the example script provided at:
+```{r }
+system.file("example-scripts/permutation_example.R", package = "pTITAN2")
+```
+That file will generate the provided data set `permutation_example` with 10 rows
+from 10 permutations of the example data set.
+
+```{r}
+permutation_example
+```
+
+The results are the increasing and decreasing taxa sumz values. In this example only four permutations are
+used and TITAN bootstrapping is limited to five iterations. In an actual analysis these values should
+be much higher. This process is very computationally intensive and can take hours or days to run
+depending on the available computing power and the number of bootstraps and permutations used.
+
+If you have three or more treatments and need to permute over them with the
+condition that no station will be in the same treatment more than once on any
+particular permutation and that all treatment labels are viable for each
+station then you can still use the `permute` function.
+
+## Analyzing the results
+The output from the above code chunk can then be used to compare the differences in change-point
+values for treatments from the observed samples versus the permuted samples. A p-value test can be
+run on these data to test for statistically significant differences between the treatment effects.
+
+```{r, results = "hide"}
+# Run TITAN on the observed data
+# limited to 2 cores for CRAN policies, end users can use more cores
+# the following uses the tidyverse dialect, load and attach the magrittr
+# namespace, use dplyr and tidyr namespaces explicitly.
+library(magrittr)
+
+CD_obs <-
+  TITAN2::titan(
+                  env     = C_IC_D_06_wID[["ImpCover"]] # chaparral envgrad dry
+                , txa     = subset(CD_06_Mall_wID, select = occurrences(CD_06_Mall_wID[, -1], n = 6L)$taxon)
+                , ncpus   = 2
+                , numPerm = 50
+                , nBoot   = 50
+  )
+
+CN_obs <-
+  TITAN2::titan(
+                  env     = C_IC_N_06_wID[["ImpCover"]] # chaparral envgrad dry
+                , txa     = subset(CN_06_Mall_wID, select = occurrences(CN_06_Mall_wID[, -1], n = 6L)$taxon)
+                , ncpus   = 2
+                , numPerm = 50
+                , nBoot   = 50
+  )
+```
+
+
+```{r}
+# create a table of the median change point from TITAN for calculating the p-values
+TITAN_med <-
+  rbind(
+          cbind(as.data.frame(CD_obs$sumz), "run" = "Tr1_CD")
+        , cbind(as.data.frame(CN_obs$sumz), "run" = "Tr2_CN")
+  )
+TITAN_med[["sumz"]] <- sub("(.+)(\\d)$", "\\1", rownames(TITAN_med))
+
+
+TITAN_med <-
+  TITAN_med %>%
+  dplyr::select(run, sumz, `0.50`) %>%
+  tidyr::pivot_wider(names_from = run, values_from = "0.50") %>%
+  dplyr::mutate(T1T2_abs = abs(Tr1_CD - Tr2_CN)) %>%
+  print
+```
+
+```{r}
+# Create a summary table of the permutation data
+tr1_filt <-
+  permutation_example %>%
+  dplyr::select(permutation, `trt1cpsumz-`,	`trt1cpsumz+`) %>%
+  tidyr::pivot_longer(cols      = `trt1cpsumz-`:`trt1cpsumz+`,
+                      values_to = "Tr1_CD",
+                      names_to  = "sumz")
+
+tr1_filt[which(tr1_filt$sumz == "trt1cpsumz-"), 2] <- "fsumz-"
+tr1_filt[which(tr1_filt$sumz == "trt1cpsumz+"), 2] <- "fsumz+"
+
+tr2_filt <-
+  permutation_example %>%
+  dplyr::select(permutation, `trt2cpsumz-`,	`trt2cpsumz+`) %>%
+  tidyr::pivot_longer(cols      = `trt2cpsumz-`:`trt2cpsumz+`,
+                      values_to = "Tr2_CN",
+                      names_to  = "sumz")
+tr2_filt[which(tr2_filt$sumz == "trt2cpsumz-"), 2] <- "fsumz-"
+tr2_filt[which(tr2_filt$sumz == "trt2cpsumz+"), 2] <- "fsumz+"
+
+
+# mutate the data and create a summary table for calculating p-values
+out_perm <-
+  dplyr::left_join(tr1_filt, tr2_filt) %>%
+  dplyr::mutate(T1T2_abs = abs(Tr1_CD - Tr2_CN)) %>%
+  dplyr::select(-permutation)
+
+# Calulate the p-values
+dplyr::tibble(treatment = "T1T2_CDCN",
+              "fsumz-" = (sum((
+                               dplyr::filter(out_perm, sumz == "fsumz-")$T1T2_abs >
+                               (dplyr::filter(TITAN_med, sumz == "fsumz-")$T1T2_abs)
+                               )) + 1) / 1001, "fsumz+" =
+              (sum((
+                    dplyr::filter(out_perm, sumz == "fsumz+")$T1T2_abs >
+                    (dplyr::filter(TITAN_med, sumz == "fsumz+")$T1T2_abs)
+                    )) + 1) / 1001)
+```
+
+# Conclusions
+
+TITAN is used in ecological studies to determine individual taxa and community
+level change points across an environmental gradient for both taxa that increase
+with the increasing environmental gradient and taxa that decrease with the
+increasing environmental gradient [@baker2010new]. pTITAN2 was developed
+as an extension of TITAN to enable comparing TITAN results between different
+treatments, including those with variable sample sizes, by permuting the
+observed data between the treatments and then rerunning TITAN on the permuted
+dataset. This allows for statistically determining difference between the
+treatments without using overlapping confidence intervals, which can be
+problematic and can lead to accepting the null hypothesis more frequently than
+statistically necessary.
+
+# Data
+Data associated with figures in this manuscript will be available via a query
+available at the url: https://edg.epa.gov/metadata/catalog/main/home.page
+within a few months of publication.
+
+# Software availability
+The pTITAN2 R package is available from the Comprehensive R Archive Network
+(CRAN) at https://cran.r-project.org/package=pTITAN2.
+Source code and example datasets are available at https://github.com/sfigary/pTITAN2.
+This is an open-access article, free of all copyright, and may be
+freely reproduced, distributed, transmitted, modified, built upon, or otherwise
+used by anyone for any lawful purpose. The work is made available under the
+Creative Commons CC0 public domain dedication.
+
+# Author Contributions
+* Stephanie Figary: Data curation, Methodology, Software, Formal Analysis, Writing
+* Naomi Detenbeck: Conceptualization, Funding Acquisition, Writing, Supervision
+* Peter DeWitt: Software development, Writing
+
+# Competing Interests
+No competing interests were disclosed
+
+# Grant Information
+This work was partially supported by the U.S. Environmental Protection Agency
+via an inter-agency agreement with the Department of Energy (DW92429801-9) which
+provided funding to Stephanie Figary through the ORISE program and through
+funding on the EPA contract EP-C-13-022 with Neptune, supporting software
+development.
+
+# Acknowledgments
+This is contribution number ORD-041368 of the Atlantic Coastal Environmental
+Sciences Division, Center for Environmental Measurement and Modeling, Office of
+Research and Development, U.S. Environmental Protection Agency. Mention of trade
+names or commercial products does not constitute endorsement or recommendation
+for use.
+
+# References
+<div id="refs"></div>
+
