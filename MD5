@@ -1,13 +1,13 @@
-46c36119a049dcd90eb0c8b8e2039620 *DESCRIPTION
+06a7cc38a8e8cb47fac7b12804b922e7 *DESCRIPTION
 fc3d859619d2f0249ff56b176ad88d80 *LICENSE
 9ce2e41b368a9934795a351a687985ac *NAMESPACE
-3852a97f1235b56f111816804bf419ab *NEWS.md
+a48c5ec32fbca2cfe523f28de3c0a7c8 *NEWS.md
 c4ae248e8efa8b956d2bd6a41fb249d9 *R/datasets.R
 f2b7b87c40cc7670faec32fa261303a5 *R/occurrences.R
 a88e8e4fd2d7b398d36b5e8951fc4498 *R/pTITAN2.R
 c878e0957f1d00a5f7854b8229ebd9e7 *R/permute.R
-218758ad5e4ca3734a7e8e316d64bcb0 *README.md
-68a774b33016aaa1fefb8915ff18d87b *build/vignette.rds
+61dfb79799daf877042ccb2b6dfd2205 *README.md
+3ec5a6f48c2eafba6dcaf336aa350aa6 *build/vignette.rds
 f9086c60013a2c7a53cfc0fa4c36edad *data/CD_06_Mall_wID.rda
 d2621f9c8a732cf31e6df111128f16ec *data/CN_06_Mall_wID.rda
 9fd98c45364f35a043094c5ef2dc5a23 *data/C_IC_D_06_wID.rda
@@ -15,7 +15,7 @@ d2621f9c8a732cf31e6df111128f16ec *data/CN_06_Mall_wID.rda
 b155fa10b5d9560511cf95047a8d1751 *data/permutation_example.rda
 b82c797ee41b8358c73145b274ba3004 *inst/doc/pTITAN2.R
 bc4bff8e89e9b9657b1caa480a54be96 *inst/doc/pTITAN2.Rmd
-3c4d2dce1fbd828978696bc2fb39b81c *inst/doc/pTITAN2.html
+41ba2c5a8bde1af32c70111c3c03cf9b *inst/doc/pTITAN2.html
 a97e032c30c445702bd01fdfcde38675 *inst/example-scripts/permutation_example.R
 74f35154a8c95c57800d34d75a39f8a7 *inst/extdata/CD_06_Mall_wID.csv
 73c1be21dd2b2e5017ac0462de3b42ed *inst/extdata/CN_06_Mall_wID.csv
