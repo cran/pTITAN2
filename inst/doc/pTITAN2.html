@@ -251,6 +251,7 @@ if (window.hljs) {
 
 
 
+
 <style type="text/css">
 /* for pandoc --citeproc since 2.11 */
 div.csl-bib-body { }
@@ -297,6 +298,9 @@ button.code-folding-btn:focus {
 }
 summary {
   display: list-item;
+}
+details > summary > p:only-child {
+  display: inline;
 }
 pre code {
   padding: 0;
@@ -523,6 +527,13 @@ environmental gradient (Table <a href="#tab:datasets">2.1</a>). These data sets 
 provided as raw csv files and as prepared R datasets.</p>
 <table>
 <caption><span id="tab:datasets">Table 2.1: </span>Example data sets provided in pTITAN2.</caption>
+<colgroup>
+<col width="19%" />
+<col width="24%" />
+<col width="29%" />
+<col width="12%" />
+<col width="12%" />
+</colgroup>
 <thead>
 <tr class="header">
 <th align="left">R Data</th>
@@ -747,17 +758,16 @@ representative of streams in the region.</p>
 <p>For this example, data were extracted for California’s Chapparal Region
 <span class="citation">(Ode et al. 2011)</span>. Sample observations were divided into one of three
 classes based on the precipitation regime for the sampling year using the Palmer
-Drought Severity Index (PDSI,
-<a href="https://www7.ncdc.noaa.gov/CDO/CDODivisionalSelect.jsp" class="uri">https://www7.ncdc.noaa.gov/CDO/CDODivisionalSelect.jsp</a>). The Palmer Drought
+Drought Severity Index (PDSI). The Palmer Drought
 Severity Index was determined for each sampling event using monthly PDSI
 data from the National Oceanic and Atmospheric Administration (NOAA, last
 accessed 21 December 2016) and climate divisions from the National Climatic Data
 Center (USGS 2004, last accessed 21 December 2016). All sampling events were
-classified as dry (less than -2 PDSI), normal (between -2 and 2 PDSI), or wet ( greater than 2 PDSI)
+classified as dry (less than -2 PDSI), normal (between -2 and 2 PDSI), or wet (greater than 2 PDSI)
 and these classifications were used as treatments for the permutations. The
 environmental gradient of interest was percent impervious cover in the upstream
 watershed, in this case defined by the National Land Cover Datasets (NLCD,
-<span class="citation">Homer et al. (2007)</span>, homer2015completion), with values interpolated between
+<span class="citation">Homer et al. (2007)</span>, <span class="citation">Homer et al. (2015)</span>), with values interpolated between
 NLCD years of record (2001,
 2006, 2011). Impervious area additions beyond 2011 were estimated as 50% of
 disturbed area for construction sites as documented in the California Storm Water
@@ -921,7 +931,7 @@ to individual processing cores. That is system dependent and left to the end
 user to implement. For an example of generating the permutations with <code>TITAN2::titan()</code>
 see the example script provided at:</p>
 <pre class="r"><code>system.file(&quot;example-scripts/permutation_example.R&quot;, package = &quot;pTITAN2&quot;)
-## [1] &quot;/private/var/folders/fc/3hxyq4z94jx_7jr506b8ttlm0000gq/T/RtmpUQJkXT/Rinst287f4767cd4d/pTITAN2/example-scripts/permutation_example.R&quot;</code></pre>
+## [1] &quot;/private/var/folders/fc/3hxyq4z94jx_7jr506b8ttlm0000gq/T/RtmpMRFlOQ/Rinst184a81a4b7614/pTITAN2/example-scripts/permutation_example.R&quot;</code></pre>
 <p>That file will generate the provided data set <code>permutation_example</code> with 10 rows
 from 10 permutations of the example data set.</p>
 <pre class="r"><code>permutation_example
@@ -984,7 +994,7 @@ CD_obs &lt;-
 ## Summarizing observed results...
 ## Estimating taxa change points using z-score maxima...
 ## Bootstrap resampling in parallel using 2 CPUs... no index will be printed to screen.
-## Proportion of pure and reliable taxa = 0.5541
+## Proportion of pure and reliable taxa = 0.5796
 
 CN_obs &lt;-
   TITAN2::titan(
@@ -1022,9 +1032,9 @@ TITAN_med &lt;-
 ## # A tibble: 4 × 4
 ##   sumz   Tr1_CD Tr2_CN T1T2_abs
 ##   &lt;chr&gt;   &lt;dbl&gt;  &lt;dbl&gt;    &lt;dbl&gt;
-## 1 sumz-   0.260 0.0850    0.175
-## 2 sumz+   0.721 3.54      2.82 
-## 3 fsumz-  0.280 0.0821    0.198
+## 1 sumz-   0.259 0.0857    0.173
+## 2 sumz+   0.704 3.69      2.98 
+## 3 fsumz-  0.268 0.0815    0.187
 ## 4 fsumz+  0.602 3.54      2.94</code></pre>
 <pre class="r"><code># Create a summary table of the permutation data
 tr1_filt &lt;-
@@ -1094,7 +1104,6 @@ within a few months of publication.</p>
 <h1><span class="header-section-number">6</span> Software availability</h1>
 <p>The pTITAN2 R package is available from the Comprehensive R Archive Network
 (CRAN) at <a href="https://cran.r-project.org/package=pTITAN2" class="uri">https://cran.r-project.org/package=pTITAN2</a>.
-Source code and example datasets are available at <a href="https://github.com/sfigary/pTITAN2" class="uri">https://github.com/sfigary/pTITAN2</a>.
 This is an open-access article, free of all copyright, and may be
 freely reproduced, distributed, transmitted, modified, built upon, or otherwise
 used by anyone for any lawful purpose. The work is made available under the
@@ -1151,6 +1160,9 @@ Greenland, Sander, Stephen J Senn, Kenneth J Rothman, John B Carlin, Charles Poo
 </div>
 <div id="ref-homer2007completion" class="csl-entry">
 Homer, Collin, Jon Dewitz, Joyce Fry, Michael Coan, Nazmul Hossain, Charles Larson, Nate Herold, et al. 2007. <span>“Completion of the 2001 National Land Cover Database for the Counterminous United States.”</span> <em>Photogrammetric Engineering and Remote Sensing</em> 73 (4): 337.
+</div>
+<div id="ref-homer2015completion" class="csl-entry">
+Homer, Collin, Jon Dewitz, Limin Yang, Suming Jin, Patrick Danielson, George Xian, John Coulston, Nathaniel Herold, James Wickham, and Kevin Megown. 2015. <span>“Completion of the 2011 National Land Cover Database for the Conterminous United States–Representing a Decade of Land Cover Change Information.”</span> <em>Photogrammetric Engineering &amp; Remote Sensing</em> 81 (5): 345–54.
 </div>
 <div id="ref-king2011novel" class="csl-entry">
 King, Ryan S, Matthew E Baker, Paul F Kazyak, and Donald E Weller. 2011. <span>“How Novel Is Too Novel? Stream Community Thresholds at Exceptionally Low Levels of Catchment Urbanization.”</span> <em>Ecological Applications</em> 21 (5): 1659–78.

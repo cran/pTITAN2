@@ -1,6 +1,6 @@
 Package: pTITAN2
 Title: Permutations of Treatment Labels and TITAN2 Analysis
-Version: 1.0.1
+Version: 1.0.2
 Authors@R: c(
     person(given = "Peter",     family = "DeWitt",    email = "peter.dewitt@cuanschutz.edu",          role = c("aut", "cre"), comment = c(ORCID = "0000-0002-6391-0795")),
     person(given = "Stephanie", family = "Figary",    email = "sef92@cornell.edu",                    role = c("aut"),        comment = c(ORCID = "0000-0002-4876-9850")),
@@ -22,10 +22,10 @@ Suggests: bookdown, DiagrammeR, dplyr (>= 1.0.0), knitr, magrittr,
 VignetteBuilder: knitr
 Config/testthat/edition: 3
 NeedsCompilation: no
-Packaged: 2021-12-07 22:21:57 UTC; peterdewitt
+Packaged: 2022-03-07 16:43:47 UTC; peterdewitt
 Author: Peter DeWitt [aut, cre] (<https://orcid.org/0000-0002-6391-0795>),
   Stephanie Figary [aut] (<https://orcid.org/0000-0002-4876-9850>),
   Naomi Detenbeck [aut] (<https://orcid.org/0000-0002-9868-0475>)
 Maintainer: Peter DeWitt <peter.dewitt@cuanschutz.edu>
 Repository: CRAN
-Date/Publication: 2021-12-07 22:40:02 UTC
+Date/Publication: 2022-03-07 17:00:02 UTC
